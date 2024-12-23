@@ -31,6 +31,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
   String _identifiedYaw = "";
   String _identifiedRoll = "";
   String _identifiedPitch = "";
+  String _age = '';
+  String _gender = '';
   // ignore: prefer_typing_uninitialized_variables
   var _identifiedFace;
   // ignore: prefer_typing_uninitialized_variables
@@ -51,7 +53,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     String? identifyThreshold = prefs.getString("identify_threshold");
     setState(() {
       _livenessThreshold = double.parse(livenessThreshold ?? "0.7");
-      _identifyThreshold = double.parse(identifyThreshold ?? "0.8");
+      _identifyThreshold = double.parse(identifyThreshold ?? "0.88");
     });
   }
 
@@ -62,6 +64,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     setState(() {
       _faces = null;
       _recognized = false;
+      _age = '';
+      _gender = '';
     });
 
     await faceDetectionViewController?.startCamera(cameraLens ?? 1);
@@ -85,6 +89,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
     double maxYaw = -1;
     double maxRoll = -1;
     double maxPitch = -1;
+    String age = '';
+    String gender = '';
     // ignore: prefer_typing_uninitialized_variables
     var enrolledFace, identifedFace;
     if (faces.length > 0) {
@@ -102,11 +108,15 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       print('mouth_opened: ' + face['mouth_opened'].toString());
       print('age: ' + face['age'].toString());
       print('gender: ' + face['gender'].toString());
-
+      // setState(() {
+      //   age = face['age'].toString();
+      //   gender = face['gender'].toString() == '0' ? 'Male' : 'Female';
+      // });
       for (var person in widget.personList) {
         double similarity = await _facesdkPlugin.similarityCalculation(
                 face['templates'], person.templates) ??
             -1;
+        print('similarity: $similarity for person: ${person.name} ' + face['gender'].toString());
         if (maxSimilarity < similarity) {
           maxSimilarity = similarity;
           maxSimilarityName = person.name;
@@ -116,6 +126,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
           maxPitch = face['pitch'];
           identifedFace = face['faceJpg'];
           enrolledFace = person.faceJpg;
+          age = face['age'].toString();
+          gender = face['gender'].toString() == '0' ? 'Male' : 'Female';
         }
       }
 
@@ -124,7 +136,7 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
       }
     }
 
-    Future.delayed(const Duration(milliseconds: 100), () {
+    Future.delayed(const Duration(milliseconds: 200), () {
       if (!mounted) return false;
       setState(() {
         _recognized = recognized;
@@ -136,6 +148,8 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
         _identifiedPitch = maxPitch.toString();
         _enrolledFace = enrolledFace;
         _identifiedFace = identifedFace;
+        _age = age;
+        _gender = gender;
       });
       if (recognized) {
         faceDetectionViewController?.stopCamera();
@@ -192,11 +206,14 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                                     children: [
                                       ClipRRect(
                                         borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Image.memory(
-                                          _enrolledFace,
-                                          width: 160,
-                                          height: 160,
+                                            BorderRadius.circular(0.0),
+                                        child: Transform.rotate(
+                                          angle: 30,
+                                          child: Image.memory(
+                                            _enrolledFace,
+                                            width: 160,
+                                            height: 160,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(
@@ -213,11 +230,14 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                                     children: [
                                       ClipRRect(
                                         borderRadius:
-                                            BorderRadius.circular(8.0),
-                                        child: Image.memory(
-                                          _identifiedFace,
-                                          width: 160,
-                                          height: 160,
+                                            BorderRadius.circular(0.0),
+                                        child: Transform.rotate(
+                                          angle: 30,
+                                          child: Image.memory(
+                                            _identifiedFace,
+                                            width: 160,
+                                            height: 160,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(
@@ -240,7 +260,35 @@ class FaceRecognitionViewState extends State<FaceRecognitionView> {
                               width: 16,
                             ),
                             Text(
-                              'Identified: $_identifiedName',
+                              'Identified: ${_identifiedName.split('.')[0]}',
+                              style: const TextStyle(fontSize: 18),
+                            )
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                            ),
+                            Text(
+                              'Gender: $_gender',
+                              style: const TextStyle(fontSize: 18),
+                            )
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                            ),
+                            Text(
+                              'Age: $_age',
                               style: const TextStyle(fontSize: 18),
                             )
                           ],
@@ -409,7 +457,7 @@ class FacePainter extends CustomPainter {
           title = "Spoof" + face['liveness'].toString();
         } else {
           color = const Color.fromARGB(0xff, 0, 0xff, 0);
-          title = "Real " + face['liveness'].toString();
+          title = "Unknown " + face['liveness'].toString();
         }
 
         TextSpan span =

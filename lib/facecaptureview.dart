@@ -2,7 +2,10 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
-
+// import 'package:camera/camera.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/painting.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -101,6 +104,8 @@ class FaceCaptureView extends StatefulWidget {
   FaceDetectionViewController? faceDetectionViewController;
   final Function(Person) insertPerson;
 
+
+
   FaceCaptureView(
       {super.key, required this.personList, required this.insertPerson});
 
@@ -109,6 +114,8 @@ class FaceCaptureView extends StatefulWidget {
 }
 
 class FaceCaptureViewState extends State<FaceCaptureView> {
+  TextEditingController nameController = TextEditingController();
+
   dynamic _faces;
   dynamic _currentFace;
   dynamic _capturedFace;
@@ -129,12 +136,76 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
   final _facesdkPlugin = FacesdkPlugin();
   FaceDetectionViewController? faceDetectionViewController;
 
+  // CameraController? _cameraController;
+  // List<CameraDescription>? cameras;
+
+  // @override
+  // void initState() {
+  //   super.initState();
+  //   _initializeCamera();
+  // }
+
+
+  // Future<void> _setupCameraController() async {
+  //   List<CameraDescription> _cameras = await availableCameras();
+  //
+  //   if (_cameras.isEmpty) {
+  //     print("No cameras found.");
+  //     return;
+  //   }
+  //
+  //   // Find the front camera
+  //   CameraDescription frontCamera = _cameras.firstWhere(
+  //         (camera) => camera.lensDirection == CameraLensDirection.front,
+  //     // Provide fallback if no front camera is found
+  //   );
+  //
+  //   if (frontCamera == null) {
+  //     print("No front camera found.");
+  //     return;
+  //   }
+  //
+  //   setState(() {
+  //     _cameraController = CameraController(
+  //       frontCamera, // Use the front camera
+  //       ResolutionPreset.high,
+  //     );
+  //   });
+  //
+  //   try {
+  //     await _cameraController?.initialize().timeout(Duration(seconds: 10), onTimeout: () {
+  //       print("Camera initialization timed out.");
+  //       // Handle timeout or show error
+  //     });
+  //     if (!mounted) return;
+  //     setState(() {});
+  //   } catch (e) {
+  //     print("Error initializing camera: $e");
+  //   }
+  // }
+  //
+  // Future<void> _initializeCamera() async {
+  //   // Initialize the camera list and choose the external camera (second camera)
+  //   cameras = await availableCameras();
+  //   if (cameras != null && cameras!.isNotEmpty) {
+  //     _cameraController = CameraController(cameras![1], ResolutionPreset.high);
+  //     await _cameraController?.initialize();
+  //     setState(() {});
+  //   }
+  // }
+
+  @override
+  void dispose() {
+   // _cameraController?.dispose();
+    super.dispose();
+  }
+
   @override
   void initState() {
     super.initState();
 
     loadSettings();
-
+   // _initializeCamera();
     setState(() {
       _viewMode = ViewMode.NO_FACE_PREPARE;
     });
@@ -142,6 +213,7 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
 
   void setViewMode(ViewMode viewMode) {
     setState(() {
+      nameController.clear();
       _viewMode = viewMode;
     });
 
@@ -156,21 +228,21 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
     String? identifyThreshold = prefs.getString("identify_threshold");
     setState(() {
       _livenessThreshold = double.parse(livenessThreshold ?? "0.7");
-      _identifyThreshold = double.parse(identifyThreshold ?? "0.8");
+      _identifyThreshold = double.parse(identifyThreshold ?? "0.88");
     });
   }
 
-  Future<void> registerFace(BuildContext context) async {
+  Future<void> registerFace({String? Name, BuildContext? context} ) async {
     num randomNumber =
         10000 + Random().nextInt(10000); // from 0 upto 99 included
     Person person = Person(
-        name: 'Person' + randomNumber.toString(),
+        name: '$Name.' + randomNumber.toString(),
         faceJpg: _capturedFace['faceJpg'],
         templates: _capturedFace['templates']);
 
     await widget.insertPerson(person);
     // ignore: use_build_context_synchronously
-    Navigator.pop(context, 'OK');
+    Navigator.pop(context!, 'OK');
   }
 
   Future<bool> onFaceDetected(faces) async {
@@ -215,16 +287,19 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
         setState(() {
           _warningTxt = "Move closer!";
         });
-      } else if (faceCaptureState.index == FaceCaptureState.NO_FRONT.index) {
-        setState(() {
-          _warningTxt = "Not fronted face!";
-        });
-      } else if (faceCaptureState.index ==
-          FaceCaptureState.FACE_OCCLUDED.index) {
-        setState(() {
-          _warningTxt = "Face occluded!";
-        });
-      } else if (faceCaptureState.index == FaceCaptureState.EYE_CLOSED.index) {
+      }
+      // else if (faceCaptureState.index == FaceCaptureState.NO_FRONT.index) {
+      //   setState(() {
+      //     _warningTxt = "Not fronted face!";
+      //   });
+      // }
+      // else if (faceCaptureState.index ==
+      //     FaceCaptureState.FACE_OCCLUDED.index) {
+      //   setState(() {
+      //     _warningTxt = "Face occluded!";
+      //   });
+      // }
+      else if (faceCaptureState.index == FaceCaptureState.EYE_CLOSED.index) {
         setState(() {
           _warningTxt = "Eye closed!";
         });
@@ -357,7 +432,7 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
 
     } catch (e) {}
     
-    if() {
+    if(true) {
     } else {
     }
 
@@ -408,18 +483,298 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
 
   @override
   Widget build(BuildContext context) {
+    final deviceHeight = MediaQuery.of(context).size.height;
+    final deviceWidth = MediaQuery.of(context).size.width;
     return WillPopScope(
       onWillPop: () async {
         faceDetectionViewController?.stopCamera();
         return true;
       },
       child: Scaffold(
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(
           title: const Text('Face Recognition'),
-          toolbarHeight: 70,
+          toolbarHeight: 30,
           centerTitle: true,
         ),
-        body: Stack(
+        body: _viewMode.index >= ViewMode.FACE_CAPTURE_DONE.index ?
+        Stack(
+          alignment: Alignment.topCenter,
+          children: <Widget>[
+            // if (_cameraController != null && _cameraController!.value.isInitialized)
+            //   Positioned.fill(
+            //     child: CameraPreview(_cameraController!),
+            //   ),
+
+            // Your existing code for Face Recognition Views
+            _viewMode.index >= ViewMode.FACE_CAPTURE_DONE.index
+                ?
+           // FaceCaptureDetectionView(faceRecognitionViewState: this),
+           //  Visibility(
+           //      visible: _viewMode == ViewMode.NO_FACE_PREPARE,
+           //      child: SizedBox(
+           //          width: double.infinity,
+           //          height: double.infinity,
+           //          child: CaptureView(
+           //            animateStart: 1.4,
+           //            animateEnd: 0.88,
+           //            duration: 800,
+           //            repeat: false,
+           //            viewMode: _viewMode,
+           //            setViewMode: setViewMode,
+           //            currentFace: _currentFace,
+           //          ))),
+           //  Visibility(
+           //      visible: _viewMode == ViewMode.REPEAT_NO_FACE_PREPARE,
+           //      child: SizedBox(
+           //          width: double.infinity,
+           //          height: double.infinity,
+           //          child: CaptureView(
+           //            animateStart: 0.88,
+           //            animateEnd: 0.92,
+           //            duration: 1300,
+           //            repeat: true,
+           //            viewMode: _viewMode,
+           //            setViewMode: setViewMode,
+           //            currentFace: _currentFace,
+           //          ))),
+           //  Visibility(
+           //      visible: _viewMode == ViewMode.TO_FACE_CIRCLE,
+           //      child: SizedBox(
+           //          width: double.infinity,
+           //          height: double.infinity,
+           //          child: CaptureView(
+           //            animateStart: 1.4,
+           //            animateEnd: 0,
+           //            duration: 800,
+           //            repeat: false,
+           //            viewMode: _viewMode,
+           //            setViewMode: setViewMode,
+           //            currentFace: _currentFace,
+           //          ))),
+           //  Visibility(
+           //      visible: _viewMode == ViewMode.FACE_CIRCLE,
+           //      child: SizedBox(
+           //          width: double.infinity,
+           //          height: double.infinity,
+           //          child: CaptureView(
+           //            animateStart: 0,
+           //            animateEnd: 0,
+           //            duration: 0,
+           //            repeat: false,
+           //            viewMode: _viewMode,
+           //            setViewMode: setViewMode,
+           //            currentFace: _currentFace,
+           //          ))),
+           //  Visibility(
+           //      visible: _viewMode == ViewMode.FACE_CIRCLE_TO_NO_FACE,
+           //      child: SizedBox(
+           //          width: double.infinity,
+           //          height: double.infinity,
+           //          child: CaptureView(
+           //            animateStart: 0,
+           //            animateEnd: 1.0,
+           //            duration: 600,
+           //            repeat: false,
+           //            viewMode: _viewMode,
+           //            setViewMode: setViewMode,
+           //            currentFace: _currentFace,
+           //          ))),
+           //  Visibility(
+           //      visible: _viewMode == ViewMode.FACE_CAPTURE_PREPARE,
+           //      child: SizedBox(
+           //          width: double.infinity,
+           //          height: double.infinity,
+           //          child: CaptureView(
+           //            animateStart: 0,
+           //            animateEnd: 1.0,
+           //            duration: 500,
+           //            repeat: false,
+           //            viewMode: _viewMode,
+           //            setViewMode: setViewMode,
+           //            currentFace: _capturedFace,
+           //          ))),
+
+            Visibility(
+                visible: _viewMode.index >= ViewMode.FACE_CAPTURE_DONE.index,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 0),
+                  child: SizedBox(
+                      width: 100,
+                      height: 500,
+                      child: Transform.rotate(
+                        angle: 30,
+                        child: CaptureView(
+                          color: Colors.transparent,
+                          animateStart: 0,
+                          animateEnd: 1.0,
+                          duration: 500,
+                          repeat: false,
+                          viewMode: _viewMode,
+                          setViewMode: setViewMode,
+                          currentFace: _capturedImage,
+                        ),
+                      )),
+                )): Container(
+              color: Colors.red,
+            ),
+            Padding(
+              padding:  EdgeInsets.only(left: 10, right: 10,top: 450),
+              child: Container(
+                  width: deviceWidth,
+                  alignment: Alignment.topLeft,
+                  child: Container(
+                    height: deviceHeight*0.07,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.topRight,
+                        colors: [Color(0xFFEFFEEB), Color(0xFFBBCBE2)],
+                      ),
+                      borderRadius:
+                      BorderRadius.circular(10),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 5),
+                      child: Center(
+                        child: TextFormField(
+
+                          controller: nameController,
+                          textInputAction: TextInputAction.done,
+                          keyboardType: TextInputType.text,
+                          style: TextStyle(color: Colors.black),
+                          // textCapitalization: ,
+                          decoration: InputDecoration(
+                            contentPadding: const EdgeInsets.only(left: 10),
+                            filled: false,
+                            counter: Offstage(),
+                            focusColor: Colors.transparent,
+                            hintText: 'Enter Person Name',
+                            hintStyle: TextStyle(color: Colors.black),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )),
+            ),
+
+            SizedBox(
+              height: deviceHeight * 0.04,
+            ),
+            Container(
+              margin: const EdgeInsets.only(right: 20, top: 64),
+              alignment: Alignment.topRight,
+              child: Text(
+                _warningTxt, // Equivalent to android:text=""
+                style: const TextStyle(
+                  color: Colors
+                      .redAccent, // Equivalent to android:textColor="@android:color/holo_red_light"
+                  fontSize: 16, // Equivalent to android:textSize="16sp"
+                ),
+              ), // Equivalent to constraintEnd_toEndOf and constraintTop_toTopOf
+            ),
+            Visibility(
+                visible:
+                    _viewMode.index == ViewMode.FACE_CAPTURE_FINISHED.index,
+                child: Container(
+                  width: double.infinity,
+                 // height: double.infinity,
+                  child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      children: [
+                        const SizedBox(
+                          height: 330,
+                        ),
+
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                            ),
+                            Text(
+                              _capturedLiveness,
+                              style: const TextStyle(fontSize: 18),
+                            )
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                            ),
+                            Text(
+                              _capturedQuality,
+                              style: const TextStyle(fontSize: 18),
+                            )
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 10,
+                        ),
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                            ),
+                            Text(
+                              _capturedLuminance,
+                              style: const TextStyle(fontSize: 18),
+                            )
+                          ],
+                        ),
+                        const SizedBox(
+                          height: 16,
+                        ),
+
+                      ]),
+                )),
+            Padding(
+              padding: EdgeInsets.only(top: 570),
+              child: Visibility(
+                visible:
+                _viewMode.index == ViewMode.FACE_CAPTURE_FINISHED.index,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: SizedBox(
+                    width: deviceWidth,
+                    height: 50,
+                    child: ElevatedButton(
+
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                        Theme.of(context).colorScheme.primaryContainer,
+                      ),
+                      onPressed: () {
+                        if(nameController.text.isNotEmpty) {
+                          registerFace(Name: nameController.text ,context: context);
+                          //enrollPerson(Name:  nameController.text, context: context);
+                        } else {
+                          Fluttertoast.showToast(
+                              msg: "Please enter person name",
+                              toastLength: Toast.LENGTH_SHORT,
+                              gravity: ToastGravity.BOTTOM,
+                              timeInSecForIosWeb: 1,
+                              backgroundColor: Colors.red,
+                              textColor: Colors.white,
+                              fontSize: 16.0);
+                        }
+                        // registerFace(context);
+                      },
+                      child: const Text('Enroll', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        )
+        :
+
+        Stack(
           children: <Widget>[
             FaceCaptureDetectionView(faceRecognitionViewState: this),
             Visibility(
@@ -534,7 +889,7 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
             ),
             Visibility(
                 visible:
-                    _viewMode.index == ViewMode.FACE_CAPTURE_FINISHED.index,
+                _viewMode.index == ViewMode.FACE_CAPTURE_FINISHED.index,
                 child: Container(
                   width: double.infinity,
                   height: double.infinity,
@@ -586,19 +941,19 @@ class FaceCaptureViewState extends State<FaceCaptureView> {
                         const SizedBox(
                           height: 16,
                         ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primaryContainer,
-                          ),
-                          onPressed: () => registerFace(context),
-                          child: const Text('Enroll'),
-                        ),
+                        // ElevatedButton(
+                        //   style: ElevatedButton.styleFrom(
+                        //     backgroundColor:
+                        //     Theme.of(context).colorScheme.primaryContainer,
+                        //   ),
+                        //   onPressed: () => registerFace(context),
+                        //   child: const Text('Enroll'),
+                        // ),
                       ]),
                 )),
           ],
         ),
-      ),
+      )
     );
   }
 }
@@ -666,6 +1021,7 @@ class CaptureView extends StatefulWidget {
   final ViewMode viewMode;
   final Function(ViewMode) setViewMode;
   final dynamic currentFace;
+  final Color color;
 
   const CaptureView(
       {super.key,
@@ -675,7 +1031,10 @@ class CaptureView extends StatefulWidget {
       required this.repeat,
       required this.viewMode,
       required this.setViewMode,
-      required this.currentFace});
+      required this.currentFace,
+  this.color = Colors.black
+}
+);
 
   @override
   _CaptureViewState createState() => _CaptureViewState();
@@ -753,7 +1112,7 @@ class _CaptureViewState extends State<CaptureView>
   Widget build(BuildContext context) {
     return CustomPaint(
       painter:
-          CapturePainter(_animation.value, widget.viewMode, widget.currentFace),
+          CapturePainter(_animation.value, widget.viewMode, widget.currentFace, widget.color),
       child: Container(),
     );
   }
@@ -766,8 +1125,9 @@ class CapturePainter extends CustomPainter {
   final Paint eraserPaint;
   final dynamic currentFace;
   late ui.Image roiImage;
+  final Color color;
 
-  CapturePainter(this.animateValue, this.viewMode, this.currentFace)
+  CapturePainter(this.animateValue, this.viewMode, this.currentFace, this.color)
       : eraserPaint = Paint()
           ..color = Colors.transparent
           ..blendMode = BlendMode.clear;
@@ -775,7 +1135,7 @@ class CapturePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) async {
     final Paint overlayPaint = Paint()
-      ..color = Colors.black
+      ..color = color
       ..style = PaintingStyle.fill;
 
     // Draw a full-screen rectangle with overlay paint

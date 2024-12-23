@@ -99,12 +99,11 @@ class CameraBaseView(activity: Activity): PluginRegistry.RequestPermissionsResul
 
         frontFotoapparat = Fotoapparat.with(activity)
             .into(cameraView)
-            .lensPosition(front())
             .frameProcessor(SampleFrameProcessor())
             .previewResolution { Resolution(1280,720) }
             .cameraErrorCallback{error -> Log.e("TestEngine", "error: " + error)}
             .build()
-            
+
     }
 
     fun setCameraViewInterface(cameraViewInterface: CameraViewInterface) {
@@ -126,15 +125,18 @@ class CameraBaseView(activity: Activity): PluginRegistry.RequestPermissionsResul
                 1
             )
         } else {
-            val configuration = CameraConfiguration(previewResolution = { Resolution(1280, 720)})
-            if(this.cameraLens == 1) {
-                frontFotoapparat.switchTo(lensPosition = front(),
-                    cameraConfiguration = configuration)
-            } else {
-                frontFotoapparat.switchTo(lensPosition = back(),
-                    cameraConfiguration = configuration)
-            }
+            // Use Fotoapparat without switching lens positions
+            val configuration = CameraConfiguration(previewResolution = { Resolution(1280, 720) })
+            frontFotoapparat = Fotoapparat.with(activity)
+                .into(cameraView)
+                .frameProcessor(SampleFrameProcessor()) // Use frame processor
+                .previewResolution { Resolution(1280, 720) }
+                .cameraErrorCallback { error -> Log.e("TestEngine", "Error: $error") }
+                .build()
+
             frontFotoapparat.start()
+
+            rotateCameraView(270f)
         }
     }
 
@@ -151,6 +153,10 @@ class CameraBaseView(activity: Activity): PluginRegistry.RequestPermissionsResul
         frontFotoapparat.stop()
     }
 
+    private fun rotateCameraView(angle: Float) {
+        cameraView.rotation = angle
+    }
+
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -161,13 +167,6 @@ class CameraBaseView(activity: Activity): PluginRegistry.RequestPermissionsResul
                 === PackageManager.PERMISSION_GRANTED
             ) {
                 val configuration = CameraConfiguration(previewResolution = { Resolution(1280, 720)})
-                if(this.cameraLens == 1) {
-                    frontFotoapparat.switchTo(lensPosition = front(),
-                        cameraConfiguration = configuration)
-                } else {
-                    frontFotoapparat.switchTo(lensPosition = back(),
-                        cameraConfiguration = configuration)
-                }
                 frontFotoapparat.start()
             }
         }

@@ -34,16 +34,19 @@ class _PersonViewState extends State<PersonView> {
                   ),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(28.0),
-                    child: Image.memory(
-                      widget.personList[index].faceJpg,
-                      width: 56,
-                      height: 56,
+                    child: Transform.rotate(
+                      angle: 30,
+                      child: Image.memory(
+                        widget.personList[index].faceJpg,
+                        width: 56,
+                        height: 56,
+                      ),
                     ),
                   ),
                   const SizedBox(
                     width: 16,
                   ),
-                  Text(widget.personList[index].name),
+                  Text(widget.personList[index].name.split('.')[0]),
                   const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.delete),
